@@ -50,6 +50,9 @@
       margin-top: 10px;
       font-size: 20px;
     }
+    .red {
+      color: red;
+    }
   </style>
 </head>
 <body>
@@ -89,21 +92,24 @@
   </div>
   <div style="display: flex; justify-content: space-between; width: 100%;">
     <div>
-
       <button style="width: 56px; height: 44px;" id="fully-memorized-button">◎</button>
-      <div><span id="fully-count">0</span><span style="font-size: 8px;">/1025</span></div>
+      <div><span id="fully-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
     </div>
     <div>
       <button style="width: 56px; height: 44px;" id="barely-remembered-button">◯</button>
-      <div><span id="barely-count">0</span><span style="font-size: 8px;">/1025</span></div>
+      <div><span id="barely-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
     </div>
     <div>
       <button style="width: 56px; height: 44px;" id="heard-before-button">△</button>
-      <div><span id="heard-count">0</span><span style="font-size: 8px;">/1025</span></div>
+      <div><span id="heard-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
+    </div>
+    <div>
+      <button style="width: 56px; height: 44px;" id="seen-before-button">◻︎</button> <!-- ぼんやり見たことがあるボタン -->
+      <div><span id="seen-before-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
     </div>
     <div>
       <button style="width: 56px; height: 44px;" id="no-idea-button">×</button>
-      <div><span id="unknown-count">1025</span><span style="font-size: 8px;">/1025</span></div>
+      <div><span id="unknown-count" class="status-count">1025</span><span style="font-size: 8px;">/1025</span></div>
     </div>
   </div>
 
@@ -119,12 +125,14 @@
     let memorizedNumbers = JSON.parse(localStorage.getItem('memorizedNumbers')) || {}; // ローカルストレージからロード（オブジェクトで保存）
     let totalNumbers = [];
     let currentNumber = null;
+    let last50Numbers = []; // 直近の50個を格納する配列
 
     // 各状態に対する重み付け
     const weights = {
       fully: 0, // 完全に覚えたポケモンは出現しない
       barely: 1, // ギリギリ思い出せた
       heard: 2, // 聞いたことがある
+      seen: 3,  // ぼんやり見たことがある
       unknown: 4, // 全くわからない
     };
 
@@ -138,12 +146,29 @@
       const fullyCount = Object.values(memorizedNumbers).filter(status => status === 'fully').length;
       const barelyCount = Object.values(memorizedNumbers).filter(status => status === 'barely').length;
       const heardCount = Object.values(memorizedNumbers).filter(status => status === 'heard').length;
-      const unknownCount = totalPokemon - (fullyCount + barelyCount + heardCount);
+      const seenBeforeCount = Object.values(memorizedNumbers).filter(status => status === 'seen').length;
+      const unknownCount = totalPokemon - (fullyCount + barelyCount + heardCount + seenBeforeCount);
 
       document.getElementById('fully-count').textContent = fullyCount;
       document.getElementById('barely-count').textContent = barelyCount;
       document.getElementById('heard-count').textContent = heardCount;
+      document.getElementById('seen-before-count').textContent = seenBeforeCount;
       document.getElementById('unknown-count').textContent = unknownCount;
+
+      // 赤色表示をリセット
+      document.querySelectorAll('.status-count').forEach(span => {
+        span.classList.remove('red');
+      });
+
+      // 現在のポケモンがどのステータスにいるかに基づいて赤色にする
+      if (currentNumber !== null) {
+        const currentStatus = memorizedNumbers[currentNumber] || 'unknown'; // 状態が存在しない場合は unknown
+        const statusElement = document.getElementById(`${currentStatus}-count`);
+        console.log("aaa", currentNumber, currentStatus, statusElement);
+        if (statusElement) {
+          statusElement.classList.add('red'); // ステータスを赤色に
+        }
+      }
     }
 
     // 地方の範囲を設定する関数
@@ -161,7 +186,10 @@
 
     // 重み付きのランダムな番号を取得する関数
     function getWeightedRandomNumber() {
-      const availableNumbers = totalNumbers.filter(num => !memorizedNumbers[num] || memorizedNumbers[num] !== 'fully'); // 完全に覚えたものは除外
+      const availableNumbers = totalNumbers.filter(num => {
+        return (!memorizedNumbers[num] || memorizedNumbers[num] !== 'fully') && !last50Numbers.includes(num); // 完全に覚えたものと直近50個を除外
+      });
+
       if (availableNumbers.length === 0) {
         document.getElementById('pokemon-number').textContent = '完璧に覚えた！！';
         document.getElementById('pokemon-image').src = '';
@@ -194,6 +222,15 @@
         document.getElementById('pokemon-image').src = imageUrl;
         document.getElementById('answer').style.display = 'block';
         document.getElementById('answer').textContent = '答えを表示';
+
+        // 直近50個に追加し、長さが50個を超えたら最古のものを削除
+        last50Numbers.push(currentNumber);
+        if (last50Numbers.length > 0) {
+          last50Numbers.shift();
+        }
+
+        // ステータスのカウントを更新して赤色にする
+        updateCounts();
       }
     }
 
@@ -212,6 +249,12 @@
 
     document.getElementById('heard-before-button').addEventListener('click', () => {
       memorizedNumbers[currentNumber] = 'heard';
+      saveToLocalStorage();
+      showRandomNumber();
+    });
+
+    document.getElementById('seen-before-button').addEventListener('click', () => {
+      memorizedNumbers[currentNumber] = 'seen';
       saveToLocalStorage();
       showRandomNumber();
     });
@@ -242,6 +285,7 @@
     document.getElementById('reset-button').addEventListener('click', () => {
       memorizedNumbers = {}; // 覚えた番号をリセット
       localStorage.removeItem('memorizedNumbers'); // ローカルストレージから削除
+      last50Numbers = []; // 直近の50個もリセット
       updateCounts();
       showRandomNumber(); // 新しい番号を表示
     });
