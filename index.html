@@ -14,7 +14,6 @@
       margin: 10px;
       padding: 10px 20px;
       font-size: 16px;
-
       -webkit-appearance: none;
       -moz-appearance: none;
       appearance: none;
@@ -46,6 +45,10 @@
     td {
       padding: 5px;
       font-size: 18px;
+    }
+    .status-count {
+      margin-top: 10px;
+      font-size: 20px;
     }
   </style>
 </head>
@@ -85,11 +88,25 @@
     <div>覚えてない→</div>
   </div>
   <div style="display: flex; justify-content: space-between; width: 100%;">
-    <button id="fully-memorized-button">◎</button>
-    <button id="barely-remembered-button">◯</button>
-    <button id="heard-before-button">△</button>
-    <button id="no-idea-button">×</button>
+    <div>
+
+      <button style="width: 56px; height: 44px;" id="fully-memorized-button">◎</button>
+      <div><span id="fully-count">0</span><span style="font-size: 8px;">/1025</span></div>
+    </div>
+    <div>
+      <button style="width: 56px; height: 44px;" id="barely-remembered-button">◯</button>
+      <div><span id="barely-count">0</span><span style="font-size: 8px;">/1025</span></div>
+    </div>
+    <div>
+      <button style="width: 56px; height: 44px;" id="heard-before-button">△</button>
+      <div><span id="heard-count">0</span><span style="font-size: 8px;">/1025</span></div>
+    </div>
+    <div>
+      <button style="width: 56px; height: 44px;" id="no-idea-button">×</button>
+      <div><span id="unknown-count">1025</span><span style="font-size: 8px;">/1025</span></div>
+    </div>
   </div>
+
   <div style="display: flex; justify-content: center; margin-top: 30px;">
     <div id="answer" style="width: 100%; text-align: center; font-size: 24px; font-weight: bold; color: blue;">答えを表示</div>
   </div>
@@ -98,6 +115,7 @@
   <table id="memorized-table"></table>
 
   <script>
+    const totalPokemon = 1025; // 総ポケモン数
     let memorizedNumbers = JSON.parse(localStorage.getItem('memorizedNumbers')) || {}; // ローカルストレージからロード（オブジェクトで保存）
     let totalNumbers = [];
     let currentNumber = null;
@@ -112,6 +130,20 @@
 
     function saveToLocalStorage() {
       localStorage.setItem('memorizedNumbers', JSON.stringify(memorizedNumbers));
+      updateCounts();
+    }
+
+    // 各状態のカウントを更新する関数
+    function updateCounts() {
+      const fullyCount = Object.values(memorizedNumbers).filter(status => status === 'fully').length;
+      const barelyCount = Object.values(memorizedNumbers).filter(status => status === 'barely').length;
+      const heardCount = Object.values(memorizedNumbers).filter(status => status === 'heard').length;
+      const unknownCount = totalPokemon - (fullyCount + barelyCount + heardCount);
+
+      document.getElementById('fully-count').textContent = fullyCount;
+      document.getElementById('barely-count').textContent = barelyCount;
+      document.getElementById('heard-count').textContent = heardCount;
+      document.getElementById('unknown-count').textContent = unknownCount;
     }
 
     // 地方の範囲を設定する関数
@@ -153,7 +185,6 @@
 
     // ポケモンの番号を表示する関数
     function showRandomNumber() {
-      console.log('memorizedNumbers', memorizedNumbers);
       const number = getWeightedRandomNumber();
       if (number !== null) {
         currentNumber = number;
@@ -211,12 +242,14 @@
     document.getElementById('reset-button').addEventListener('click', () => {
       memorizedNumbers = {}; // 覚えた番号をリセット
       localStorage.removeItem('memorizedNumbers'); // ローカルストレージから削除
+      updateCounts();
       showRandomNumber(); // 新しい番号を表示
     });
 
     // ページ読み込み時に地方範囲を設定し、最初の番号を表示
     setRegionRange();
     showRandomNumber();
+    updateCounts(); // ページ読み込み時にカウントを表示
   </script>
 
 </body>
