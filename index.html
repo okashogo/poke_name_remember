@@ -63,6 +63,11 @@
     <button id="reset-button">リセット</button>
   </div>
 
+  <!-- 回答回数表示 -->
+  <div>
+    <span>回答数: </span><span id="answer-count">0</span>
+  </div>
+
   <!-- 地方の選択肢 -->
   <div>
     <label for="region">地方を選んでください:</label>
@@ -126,6 +131,7 @@
     let totalNumbers = [];
     let currentNumber = null;
     let last50Numbers = []; // 直近の50個を格納する配列
+    let answerCount = -1; // 回答回数をカウント
 
     // 各状態に対する重み付け
     const weights = {
@@ -154,21 +160,6 @@
       document.getElementById('heard-count').textContent = heardCount;
       document.getElementById('seen-before-count').textContent = seenBeforeCount;
       document.getElementById('unknown-count').textContent = unknownCount;
-
-      // 赤色表示をリセット
-      document.querySelectorAll('.status-count').forEach(span => {
-        span.classList.remove('red');
-      });
-
-      // 現在のポケモンがどのステータスにいるかに基づいて赤色にする
-      if (currentNumber !== null) {
-        const currentStatus = memorizedNumbers[currentNumber] || 'unknown'; // 状態が存在しない場合は unknown
-        const statusElement = document.getElementById(`${currentStatus}-count`);
-        console.log("aaa", currentNumber, currentStatus, statusElement);
-        if (statusElement) {
-          statusElement.classList.add('red'); // ステータスを赤色に
-        }
-      }
     }
 
     // 地方の範囲を設定する関数
@@ -223,12 +214,33 @@
         document.getElementById('answer').style.display = 'block';
         document.getElementById('answer').textContent = '答えを表示';
 
+        // 回答回数を増やす
+        answerCount++;
+        document.getElementById('answer-count').textContent = answerCount;
+
+        // 赤色表示をリセット
+        document.querySelectorAll('.status-count').forEach(span => {
+          span.classList.remove('red');
+        });
+
         // 直近50個に追加し、長さが50個を超えたら最古のものを削除
         last50Numbers.push(currentNumber);
-        if (last50Numbers.length > 0) {
+        if (last50Numbers.length > 50) {
           last50Numbers.shift();
         }
 
+
+        let currentStatus
+        if (Object.keys(memorizedNumbers).includes(number.toString())) {
+          currentStatus = memorizedNumbers[number];
+        } else {
+          currentStatus = null;
+        }
+
+        const statusElement = document.getElementById(`${currentStatus}-count`);
+        if (statusElement) {
+          statusElement.classList.add('red'); // ステータスを赤色に
+        }
         // ステータスのカウントを更新して赤色にする
         updateCounts();
       }
@@ -286,6 +298,8 @@
       memorizedNumbers = {}; // 覚えた番号をリセット
       localStorage.removeItem('memorizedNumbers'); // ローカルストレージから削除
       last50Numbers = []; // 直近の50個もリセット
+      answerCount = -1; // 回答回数をリセット
+      document.getElementById('answer-count').textContent = answerCount; // 回答回数を表示
       updateCounts();
       showRandomNumber(); // 新しい番号を表示
     });
