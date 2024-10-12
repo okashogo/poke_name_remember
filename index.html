@@ -110,7 +110,7 @@
     </div>
     <div>
       <button style="width: 50px; height: 44px;" id="seen-before-button">◻︎</button> <!-- ぼんやり見たことがあるボタン -->
-      <div><span id="seen-before-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
+      <div><span id="seen-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
     </div>
     <div>
       <button style="width: 50px; height: 44px;" id="no-idea-button">×</button>
@@ -152,13 +152,13 @@
       const fullyCount = Object.values(memorizedNumbers).filter(status => status === 'fully').length;
       const barelyCount = Object.values(memorizedNumbers).filter(status => status === 'barely').length;
       const heardCount = Object.values(memorizedNumbers).filter(status => status === 'heard').length;
-      const seenBeforeCount = Object.values(memorizedNumbers).filter(status => status === 'seen').length;
-      const unknownCount = totalPokemon - (fullyCount + barelyCount + heardCount + seenBeforeCount);
+      const seenCount = Object.values(memorizedNumbers).filter(status => status === 'seen').length;
+      const unknownCount = totalPokemon - (fullyCount + barelyCount + heardCount + seenCount);
 
       document.getElementById('fully-count').textContent = fullyCount;
       document.getElementById('barely-count').textContent = barelyCount;
       document.getElementById('heard-count').textContent = heardCount;
-      document.getElementById('seen-before-count').textContent = seenBeforeCount;
+      document.getElementById('seen-count').textContent = seenCount;
       document.getElementById('unknown-count').textContent = unknownCount;
     }
 
