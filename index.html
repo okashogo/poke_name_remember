@@ -28,8 +28,8 @@
       margin-bottom: 20px;
     }
     #pokemon-image {
-      width: 300px;
-      height: 300px;
+      width: 280px;
+      height: 280px;
       object-fit: contain;
       margin-bottom: 20px;
     }
@@ -121,10 +121,14 @@
   <div style="display: flex; justify-content: center; margin-top: 30px;">
     <div id="answer" style="width: 100%; text-align: center; font-size: 24px; font-weight: bold; color: blue;">答えを表示</div>
   </div>
+  <div style="display: flex; justify-content: center; margin-top: 10px; padding: 10px; height: 20px; border: 1px solid #ccc; border-radius: 10px;">
+    <div id="gogen" style="width: 100%; text-align: center; font-size: 12px; font-weight: bold;"></div>
+  </div>
 
   <!-- 覚えた数字のテーブル -->
   <table id="memorized-table"></table>
 
+  <script src="pokemon_data.js"></script>
   <script>
     const totalPokemon = 1025; // 総ポケモン数
     let memorizedNumbers = JSON.parse(localStorage.getItem('memorizedNumbers')) || {}; // ローカルストレージからロード（オブジェクトで保存）
@@ -213,6 +217,7 @@
         document.getElementById('pokemon-image').src = imageUrl;
         document.getElementById('answer').style.display = 'block';
         document.getElementById('answer').textContent = '答えを表示';
+        document.getElementById('gogen').textContent = '';
 
         // 回答回数を増やす
         answerCount++;
@@ -277,16 +282,38 @@
       showRandomNumber();
     });
 
-    // 答えを表示する関数
+    // CSVをパースしてオブジェクトの配列に変換する関数
+    function parseCSVToPokemonData(csvText) {
+      const headers = csvText.split(','); // ヘッダー行を取得
+
+      const data = [];
+      for (let i = 0; i < 1025; i++) {
+        data.push({
+          "ポケモン番号": parseInt(headers[(i) * 3]),
+          "ポケモン名": headers[(i) * 3 + 1],
+          "語源": headers[(i) * 3 + 2]
+        });
+      }
+
+      return data;
+    }
+
+    // 変換されたpokemonDataの配列を作成
+    const pokemonData = parseCSVToPokemonData(csvString);
+
+    // ポケモンの名前と語源を表示する関数
     function showAnswer() {
       if (currentNumber !== null) {
-        const detailUrl = `https://pokeapi.co/api/v2/pokemon-species/${currentNumber}`;
-        fetch(detailUrl)
-          .then(response => response.json())
-          .then(data => {
-            document.getElementById('answer').textContent = `答え: ${data.names.find(name => name.language.name === 'ja').name}`;
-          })
-          .catch(error => console.error('Error:', error));
+        // currentNumberに該当するポケモンを検索
+        const pokemon = pokemonData.find(p => p['ポケモン番号'] == Number(currentNumber));
+        if (pokemon) {
+          // ポケモン名と語源を表示
+          document.getElementById('answer').textContent = `${pokemon['ポケモン名']}`;
+          document.getElementById('gogen').textContent = `${pokemon['語源']}`;
+        } else {
+          document.getElementById('answer').textContent = 'ポケモンが見つかりません';
+          document.getElementById('gogen').textContent = '';
+        }
       }
     }
 
