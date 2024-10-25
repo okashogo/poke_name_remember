@@ -1,341 +1,483 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ポケモン覚えゲーム</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 50px 10px;
-    }
-    button {
-      margin: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      cursor: pointer;
-    }
-    #pokemon-number {
-      font-size: 48px;
-      margin-bottom: 20px;
-    }
-    #pokemon-image {
-      width: 280px;
-      height: 280px;
-      object-fit: contain;
-      margin-bottom: 20px;
-    }
-    select {
-      margin-bottom: 20px;
-      font-size: 16px;
-      padding: 5px;
-    }
-    table {
-      margin: 20px auto;
-      border-collapse: collapse;
-    }
-    td {
-      padding: 5px;
-      font-size: 18px;
-    }
-    .status-count {
-      margin-top: 10px;
-      font-size: 20px;
-    }
-    .red {
-      color: red;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>ポケモン覚えゲーム!</h1>
-
-  <div style="margin-bottom: 30px;">
-    <button id="reset-button">リセット</button>
-  </div>
-
-  <!-- 回答回数表示 -->
-  <div>
-    <span>回答数: </span><span id="answer-count">0</span>
-  </div>
-
-  <!-- 地方の選択肢 -->
-  <div>
-    <label for="region">地方を選んでください:</label>
-    <select id="region">
-      <option value="1-1025">全て</option>
-      <option value="1-151">カントー地方: 1〜151</option>
-      <option value="152-251">ジョウト地方: 152〜251</option>
-      <option value="252-386">ホウエン地方: 252〜386</option>
-      <option value="387-493">シンオウ地方: 387〜493</option>
-      <option value="494-649">イッシュ地方: 494〜649</option>
-      <option value="650-721">カロス地方: 650〜721</option>
-      <option value="722-807">アローラ地方: 722〜807</option>
-      <option value="808-898">ガラル地方: 808〜898</option>
-      <option value="899-905">ヒスイ地方: 899〜905</option>
-      <option value="906-1025">バルデア地方: 906〜1025</option>
-    </select>
-  </div>
-
-  <div>
-    <img id="pokemon-image" src="" alt="ポケモン画像">
-  </div>
-
-  <div id="pokemon-number">?</div>
-  <div style="display: flex; justify-content: space-between;">
-    <div>←覚えた</div>
-    <div>覚えてない→</div>
-  </div>
-  <div style="display: flex; justify-content: space-between; width: 100%;">
-    <div>
-      <button style="width: 50px; height: 44px;" id="fully-memorized-button">◎</button>
-      <div><span id="fully-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
-    </div>
-    <div>
-      <button style="width: 50px; height: 44px;" id="barely-remembered-button">◯</button>
-      <div><span id="barely-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
-    </div>
-    <div>
-      <button style="width: 50px; height: 44px;" id="heard-before-button">△</button>
-      <div><span id="heard-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
-    </div>
-    <div>
-      <button style="width: 50px; height: 44px;" id="seen-before-button">◻︎</button> <!-- ぼんやり見たことがあるボタン -->
-      <div><span id="seen-count" class="status-count">0</span><span style="font-size: 8px;">/1025</span></div>
-    </div>
-    <div>
-      <button style="width: 50px; height: 44px;" id="no-idea-button">×</button>
-      <div><span id="unknown-count" class="status-count">1025</span><span style="font-size: 8px;">/1025</span></div>
-    </div>
-  </div>
-
-  <div style="display: flex; justify-content: center; margin-top: 30px;">
-    <div id="answer" style="width: 100%; text-align: center; font-size: 24px; font-weight: bold; color: blue;">答えを表示</div>
-  </div>
-  <div style="display: flex; justify-content: center; margin-top: 10px; padding: 10px; height: 20px; border: 1px solid #ccc; border-radius: 10px;">
-    <div id="gogen" style="width: 100%; text-align: center; font-size: 12px; font-weight: bold;"></div>
-  </div>
-
-  <!-- 覚えた数字のテーブル -->
-  <table id="memorized-table"></table>
-
-  <script src="pokemon_data.js"></script>
-  <script>
-    const totalPokemon = 1025; // 総ポケモン数
-    let memorizedNumbers = JSON.parse(localStorage.getItem('memorizedNumbers')) || {}; // ローカルストレージからロード（オブジェクトで保存）
-    let totalNumbers = [];
-    let currentNumber = null;
-    let last50Numbers = []; // 直近の50個を格納する配列
-    let answerCount = -1; // 回答回数をカウント
-
-    // 各状態に対する重み付け
-    const weights = {
-      fully: 0, // 完全に覚えたポケモンは出現しない
-      barely: 1, // ギリギリ思い出せた
-      heard: 2, // 聞いたことがある
-      seen: 3,  // ぼんやり見たことがある
-      unknown: 4, // 全くわからない
-    };
-
-    function saveToLocalStorage() {
-      localStorage.setItem('memorizedNumbers', JSON.stringify(memorizedNumbers));
-      updateCounts();
-    }
-
-    // 各状態のカウントを更新する関数
-    function updateCounts() {
-      const fullyCount = Object.values(memorizedNumbers).filter(status => status === 'fully').length;
-      const barelyCount = Object.values(memorizedNumbers).filter(status => status === 'barely').length;
-      const heardCount = Object.values(memorizedNumbers).filter(status => status === 'heard').length;
-      const seenCount = Object.values(memorizedNumbers).filter(status => status === 'seen').length;
-      const unknownCount = totalPokemon - (fullyCount + barelyCount + heardCount + seenCount);
-
-      document.getElementById('fully-count').textContent = fullyCount;
-      document.getElementById('barely-count').textContent = barelyCount;
-      document.getElementById('heard-count').textContent = heardCount;
-      document.getElementById('seen-count').textContent = seenCount;
-      document.getElementById('unknown-count').textContent = unknownCount;
-    }
-
-    // 地方の範囲を設定する関数
-    function setRegionRange() {
-      const regionSelect = document.getElementById('region');
-      const [start, end] = regionSelect.value.split('-').map(Number);
-      totalNumbers = Array.from({ length: end - start + 1 }, (_, i) => i + start); // 選択した地方の番号範囲
-    }
-
-    // 地方選択が変わったときに範囲を変更
-    document.getElementById('region').addEventListener('change', () => {
-      setRegionRange();
-      showRandomNumber();
-    });
-
-    // 重み付きのランダムな番号を取得する関数
-    function getWeightedRandomNumber() {
-      const availableNumbers = totalNumbers.filter(num => {
-        return (!memorizedNumbers[num] || memorizedNumbers[num] !== 'fully') && !last50Numbers.includes(num); // 完全に覚えたものと直近50個を除外
-      });
-
-      if (availableNumbers.length === 0) {
-        document.getElementById('pokemon-number').textContent = '完璧に覚えた！！';
-        document.getElementById('pokemon-image').src = '';
-        return null;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ポケモン覚えゲーム</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 50px 10px;
       }
+      button {
+        margin: 10px;
+        padding: 10px 20px;
+        font-size: 16px;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        cursor: pointer;
+      }
+      #pokemon-number {
+        font-size: 48px;
+      }
+      #pokemon-number-container {
+        height: 40px;
+        margin-bottom: 20px;
+      }
+      #pokemon-image-container {
+        display: flex;
+        justify-content: center;
+        /* width: 280px; */
+        height: 280px;
+        /* object-fit: contain;
+        margin-bottom: 20px; */
+      }
+      #pokemon-image {
+        width: 280px;
+        height: 280px;
+        object-fit: contain;
+        margin-bottom: 20px;
+      }
+      select {
+        margin-bottom: 20px;
+        font-size: 16px;
+        padding: 5px;
+      }
+      table {
+        margin: 20px auto;
+        border-collapse: collapse;
+      }
+      td {
+        padding: 5px;
+        font-size: 18px;
+      }
+      .status-count {
+        margin-top: 10px;
+        font-size: 20px;
+      }
+      .red {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ポケモン覚えゲーム!</h1>
 
-      // ポケモン番号の重みを計算
-      let weightedNumbers = [];
-      availableNumbers.forEach(num => {
-        const status = memorizedNumbers[num] || 'unknown';
-        const weight = weights[status];
-        for (let i = 0; i < weight; i++) {
-          weightedNumbers.push(num);
-        }
-      });
+    <div style="margin-bottom: 30px">
+      <button id="reset-button">リセット</button>
+    </div>
 
-      // ランダムに選択
-      const randomIndex = Math.floor(Math.random() * weightedNumbers.length);
-      return weightedNumbers[randomIndex];
-    }
+    <div style="margin-bottom: 30px">
+      <select id="hint-type" value="image-number">
+        <option value="image-number">画像 + 番号</option>
+        <option value="image">画像</option>
+        <option value="number">番号</option>
+      </select>
+    </div>
 
-    // ポケモンの番号を表示する関数
-    function showRandomNumber() {
-      const number = getWeightedRandomNumber();
-      if (number !== null) {
-        currentNumber = number;
-        document.getElementById('pokemon-number').textContent = number;
-        const paddedNumberForImage = String(number).padStart(3, '0');
-        const imageUrl = `https://all-pokemon-ierukana.com/img/pokemon/${paddedNumberForImage}.png`; // 画像のURLを作成
-        document.getElementById('pokemon-image').src = imageUrl;
-        document.getElementById('answer').style.display = 'block';
-        document.getElementById('answer').textContent = '答えを表示';
-        document.getElementById('gogen').textContent = '';
+    <!-- 回答回数表示 -->
+    <div><span>回答数: </span><span id="answer-count">0</span></div>
 
-        // 回答回数を増やす
-        answerCount++;
-        document.getElementById('answer-count').textContent = answerCount;
+    <!-- 地方の選択肢 -->
+    <div>
+      <label for="region">地方を選んでください:</label>
+      <select id="region">
+        <option value="1-1025">全て</option>
+        <option value="1-151">カントー地方: 1〜151</option>
+        <option value="152-251">ジョウト地方: 152〜251</option>
+        <option value="252-386">ホウエン地方: 252〜386</option>
+        <option value="387-493">シンオウ地方: 387〜493</option>
+        <option value="494-649">イッシュ地方: 494〜649</option>
+        <option value="650-721">カロス地方: 650〜721</option>
+        <option value="722-807">アローラ地方: 722〜807</option>
+        <option value="808-898">ガラル地方: 808〜898</option>
+        <option value="899-905">ヒスイ地方: 899〜905</option>
+        <option value="906-1025">バルデア地方: 906〜1025</option>
+      </select>
+    </div>
 
-        // 赤色表示をリセット
-        document.querySelectorAll('.status-count').forEach(span => {
-          span.classList.remove('red');
-        });
+    <div id="pokemon-image-container">
+      <img id="pokemon-image" src="" alt="ポケモン画像" />
+    </div>
 
-        // 直近50個に追加し、長さが50個を超えたら最古のものを削除
-        last50Numbers.push(currentNumber);
-        if (last50Numbers.length > 50) {
-          last50Numbers.shift();
-        }
+    <div id="pokemon-number-container">
+      <div id="pokemon-number">?</div>
+    </div>
+    <div style="display: flex; justify-content: space-between">
+      <div>←覚えた</div>
+      <div>覚えてない→</div>
+    </div>
+    <div style="display: flex; justify-content: space-between; width: 100%">
+      <div>
+        <button style="width: 50px; height: 44px" id="fully-memorized-button">
+          ◎
+        </button>
+        <div>
+          <span id="fully-count" class="status-count">0</span
+          ><span style="font-size: 8px">/1025</span>
+        </div>
+      </div>
+      <div>
+        <button style="width: 50px; height: 44px" id="barely-remembered-button">
+          ◯
+        </button>
+        <div>
+          <span id="barely-count" class="status-count">0</span
+          ><span style="font-size: 8px">/1025</span>
+        </div>
+      </div>
+      <div>
+        <button style="width: 50px; height: 44px" id="heard-before-button">
+          △
+        </button>
+        <div>
+          <span id="heard-count" class="status-count">0</span
+          ><span style="font-size: 8px">/1025</span>
+        </div>
+      </div>
+      <div>
+        <button style="width: 50px; height: 44px" id="seen-before-button">
+          ◻︎
+        </button>
+        <!-- ぼんやり見たことがあるボタン -->
+        <div>
+          <span id="seen-count" class="status-count">0</span
+          ><span style="font-size: 8px">/1025</span>
+        </div>
+      </div>
+      <div>
+        <button style="width: 50px; height: 44px" id="no-idea-button">×</button>
+        <div>
+          <span id="unknown-count" class="status-count">1025</span
+          ><span style="font-size: 8px">/1025</span>
+        </div>
+      </div>
+    </div>
 
+    <div style="display: flex; justify-content: center; margin-top: 30px">
+      <div
+        id="answer"
+        style="
+          width: 100%;
+          text-align: center;
+          font-size: 24px;
+          font-weight: bold;
+          color: blue;
+        "
+      >
+        答えを表示
+      </div>
+    </div>
+    <div
+      style="
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+        padding: 10px;
+        height: 20px;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+      "
+    >
+      <div
+        id="gogen"
+        style="
+          width: 100%;
+          text-align: center;
+          font-size: 12px;
+          font-weight: bold;
+        "
+      ></div>
+    </div>
 
-        let currentStatus
-        if (Object.keys(memorizedNumbers).includes(number.toString())) {
-          currentStatus = memorizedNumbers[number];
-        } else {
-          currentStatus = null;
-        }
+    <!-- 覚えた数字のテーブル -->
+    <table id="memorized-table"></table>
 
-        const statusElement = document.getElementById(`${currentStatus}-count`);
-        if (statusElement) {
-          statusElement.classList.add('red'); // ステータスを赤色に
-        }
-        // ステータスのカウントを更新して赤色にする
+    <script src="pokemon_data.js"></script>
+    <script>
+      const totalPokemon = 1025; // 総ポケモン数
+      let memorizedNumbers =
+        JSON.parse(localStorage.getItem("memorizedNumbers")) || {}; // ローカルストレージからロード（オブジェクトで保存）
+      let totalNumbers = [];
+      let currentNumber = null;
+      let last50Numbers = []; // 直近の50個を格納する配列
+      let answerCount = -1; // 回答回数をカウント
+      let hintType = localStorage.getItem("hintType") || "image-number"; // ヒントの種類
+
+      document.getElementById("hint-type").value = hintType;
+
+      // 各状態に対する重み付け
+      const weights = {
+        fully: 0, // 完全に覚えたポケモンは出現しない
+        barely: 1, // ギリギリ思い出せた
+        heard: 2, // 聞いたことがある
+        seen: 3, // ぼんやり見たことがある
+        unknown: 4, // 全くわからない
+      };
+
+      function saveToLocalStorage() {
+        localStorage.setItem(
+          "memorizedNumbers",
+          JSON.stringify(memorizedNumbers)
+        );
         updateCounts();
       }
-    }
 
-    // 各ボタンの動作を設定
-    document.getElementById('fully-memorized-button').addEventListener('click', () => {
-      memorizedNumbers[currentNumber] = 'fully';
-      saveToLocalStorage();
-      showRandomNumber();
-    });
+      // 各状態のカウントを更新する関数
+      function updateCounts() {
+        const fullyCount = Object.values(memorizedNumbers).filter(
+          (status) => status === "fully"
+        ).length;
+        const barelyCount = Object.values(memorizedNumbers).filter(
+          (status) => status === "barely"
+        ).length;
+        const heardCount = Object.values(memorizedNumbers).filter(
+          (status) => status === "heard"
+        ).length;
+        const seenCount = Object.values(memorizedNumbers).filter(
+          (status) => status === "seen"
+        ).length;
+        const unknownCount =
+          totalPokemon - (fullyCount + barelyCount + heardCount + seenCount);
 
-    document.getElementById('barely-remembered-button').addEventListener('click', () => {
-      memorizedNumbers[currentNumber] = 'barely';
-      saveToLocalStorage();
-      showRandomNumber();
-    });
-
-    document.getElementById('heard-before-button').addEventListener('click', () => {
-      memorizedNumbers[currentNumber] = 'heard';
-      saveToLocalStorage();
-      showRandomNumber();
-    });
-
-    document.getElementById('seen-before-button').addEventListener('click', () => {
-      memorizedNumbers[currentNumber] = 'seen';
-      saveToLocalStorage();
-      showRandomNumber();
-    });
-
-    document.getElementById('no-idea-button').addEventListener('click', () => {
-      memorizedNumbers[currentNumber] = 'unknown';
-      saveToLocalStorage();
-      showRandomNumber();
-    });
-
-    // CSVをパースしてオブジェクトの配列に変換する関数
-    function parseCSVToPokemonData(csvText) {
-      const headers = csvText.split(','); // ヘッダー行を取得
-
-      const data = [];
-      for (let i = 0; i < 1025; i++) {
-        data.push({
-          "ポケモン番号": parseInt(headers[(i) * 3]),
-          "ポケモン名": headers[(i) * 3 + 1],
-          "語源": headers[(i) * 3 + 2]
-        });
+        document.getElementById("fully-count").textContent = fullyCount;
+        document.getElementById("barely-count").textContent = barelyCount;
+        document.getElementById("heard-count").textContent = heardCount;
+        document.getElementById("seen-count").textContent = seenCount;
+        document.getElementById("unknown-count").textContent = unknownCount;
       }
 
-      return data;
-    }
+      // 地方の範囲を設定する関数
+      function setRegionRange() {
+        const regionSelect = document.getElementById("region");
+        const [start, end] = regionSelect.value.split("-").map(Number);
+        totalNumbers = Array.from(
+          { length: end - start + 1 },
+          (_, i) => i + start
+        ); // 選択した地方の番号範囲
+      }
 
-    // 変換されたpokemonDataの配列を作成
-    const pokemonData = parseCSVToPokemonData(csvString);
+      // 地方選択が変わったときに範囲を変更
+      document.getElementById("region").addEventListener("change", () => {
+        setRegionRange();
+        showRandomNumber();
+      });
 
-    // ポケモンの名前と語源を表示する関数
-    function showAnswer() {
-      if (currentNumber !== null) {
-        // currentNumberに該当するポケモンを検索
-        const pokemon = pokemonData.find(p => p['ポケモン番号'] == Number(currentNumber));
-        if (pokemon) {
-          // ポケモン名と語源を表示
-          document.getElementById('answer').textContent = `${pokemon['ポケモン名']}`;
-          document.getElementById('gogen').textContent = `${pokemon['語源']}`;
-        } else {
-          document.getElementById('answer').textContent = 'ポケモンが見つかりません';
-          document.getElementById('gogen').textContent = '';
+      // 重み付きのランダムな番号を取得する関数
+      function getWeightedRandomNumber() {
+        const availableNumbers = totalNumbers.filter((num) => {
+          return (
+            (!memorizedNumbers[num] || memorizedNumbers[num] !== "fully") &&
+            !last50Numbers.includes(num)
+          ); // 完全に覚えたものと直近50個を除外
+        });
+
+        if (availableNumbers.length === 0) {
+          document.getElementById("pokemon-number").textContent =
+            "完璧に覚えた！！";
+          document.getElementById("pokemon-image").src = "";
+          return null;
+        }
+
+        // ポケモン番号の重みを計算
+        let weightedNumbers = [];
+        availableNumbers.forEach((num) => {
+          const status = memorizedNumbers[num] || "unknown";
+          const weight = weights[status];
+          for (let i = 0; i < weight; i++) {
+            weightedNumbers.push(num);
+          }
+        });
+
+        // ランダムに選択
+        const randomIndex = Math.floor(Math.random() * weightedNumbers.length);
+        return weightedNumbers[randomIndex];
+      }
+
+      // ポケモンの番号を表示する関数
+      function showRandomNumber() {
+        const number = getWeightedRandomNumber();
+        if (number !== null) {
+          currentNumber = number;
+          document.getElementById("pokemon-number").textContent = number;
+          const paddedNumberForImage = String(number).padStart(3, "0");
+          const imageUrl = `https://all-pokemon-ierukana.com/img/pokemon/${paddedNumberForImage}.png`; // 画像のURLを作成
+          document.getElementById("pokemon-image").src = imageUrl;
+          document.getElementById("answer").style.display = "block";
+          document.getElementById("answer").textContent = "答えを表示";
+          document.getElementById("gogen").textContent = "";
+          if (hintType === "image-number") {
+            document.getElementById("pokemon-image").style.display = "block";
+            document.getElementById("pokemon-number").style.display = "block";
+          } else if (hintType === "image") {
+            document.getElementById("pokemon-image").style.display = "block";
+            document.getElementById("pokemon-number").style.display = "none";
+          } else if (hintType === "number") {
+            document.getElementById("pokemon-image").style.display = "none";
+            document.getElementById("pokemon-number").style.display = "block";
+          }
+
+          // 回答回数を増やす
+          answerCount++;
+          document.getElementById("answer-count").textContent = answerCount;
+
+          // 赤色表示をリセット
+          document.querySelectorAll(".status-count").forEach((span) => {
+            span.classList.remove("red");
+          });
+
+          // 直近50個に追加し、長さが50個を超えたら最古のものを削除
+          last50Numbers.push(currentNumber);
+          if (last50Numbers.length > 50) {
+            last50Numbers.shift();
+          }
+
+          let currentStatus;
+          if (Object.keys(memorizedNumbers).includes(number.toString())) {
+            currentStatus = memorizedNumbers[number];
+          } else {
+            currentStatus = null;
+          }
+
+          const statusElement = document.getElementById(
+            `${currentStatus}-count`
+          );
+          if (statusElement) {
+            statusElement.classList.add("red"); // ステータスを赤色に
+          }
+          // ステータスのカウントを更新して赤色にする
+          updateCounts();
         }
       }
-    }
 
-    // 「答えを表示」ボタンがクリックされたとき
-    document.getElementById('answer').addEventListener('click', showAnswer);
+      // 各ボタンの動作を設定
+      document
+        .getElementById("fully-memorized-button")
+        .addEventListener("click", () => {
+          memorizedNumbers[currentNumber] = "fully";
+          saveToLocalStorage();
+          showRandomNumber();
+        });
 
-    // 「リセット」ボタンが押されたとき
-    document.getElementById('reset-button').addEventListener('click', () => {
-      memorizedNumbers = {}; // 覚えた番号をリセット
-      localStorage.removeItem('memorizedNumbers'); // ローカルストレージから削除
-      last50Numbers = []; // 直近の50個もリセット
-      answerCount = -1; // 回答回数をリセット
-      document.getElementById('answer-count').textContent = answerCount; // 回答回数を表示
-      updateCounts();
-      showRandomNumber(); // 新しい番号を表示
-    });
+      document
+        .getElementById("barely-remembered-button")
+        .addEventListener("click", () => {
+          memorizedNumbers[currentNumber] = "barely";
+          saveToLocalStorage();
+          showRandomNumber();
+        });
 
-    // ページ読み込み時に地方範囲を設定し、最初の番号を表示
-    setRegionRange();
-    showRandomNumber();
-    updateCounts(); // ページ読み込み時にカウントを表示
-  </script>
+      document
+        .getElementById("heard-before-button")
+        .addEventListener("click", () => {
+          memorizedNumbers[currentNumber] = "heard";
+          saveToLocalStorage();
+          showRandomNumber();
+        });
 
-</body>
+      document
+        .getElementById("seen-before-button")
+        .addEventListener("click", () => {
+          memorizedNumbers[currentNumber] = "seen";
+          saveToLocalStorage();
+          showRandomNumber();
+        });
+
+      document
+        .getElementById("no-idea-button")
+        .addEventListener("click", () => {
+          memorizedNumbers[currentNumber] = "unknown";
+          saveToLocalStorage();
+          showRandomNumber();
+        });
+
+      // CSVをパースしてオブジェクトの配列に変換する関数
+      function parseCSVToPokemonData(csvText) {
+        const headers = csvText.split(","); // ヘッダー行を取得
+
+        const data = [];
+        for (let i = 0; i < 1025; i++) {
+          data.push({
+            ポケモン番号: parseInt(headers[i * 3]),
+            ポケモン名: headers[i * 3 + 1],
+            語源: headers[i * 3 + 2],
+          });
+        }
+
+        return data;
+      }
+
+      // 変換されたpokemonDataの配列を作成
+      const pokemonData = parseCSVToPokemonData(csvString);
+
+      // ポケモンの名前と語源を表示する関数
+      function showAnswer() {
+        if (currentNumber !== null) {
+          // currentNumberに該当するポケモンを検索
+          const pokemon = pokemonData.find(
+            (p) => p["ポケモン番号"] == Number(currentNumber)
+          );
+          if (pokemon) {
+            // ポケモン名と語源を表示
+            document.getElementById(
+              "answer"
+            ).textContent = `${pokemon["ポケモン名"]}`;
+            document.getElementById("gogen").textContent = `${pokemon["語源"]}`;
+            if (hintType === "image") {
+              document.getElementById("pokemon-number").style.display = "block";
+            } else if (hintType === "number") {
+              document.getElementById("pokemon-image").style.display = "block";
+            }
+          } else {
+            document.getElementById("answer").textContent =
+              "ポケモンが見つかりません";
+            document.getElementById("gogen").textContent = "";
+          }
+        }
+      }
+
+      document.getElementById("hint-type").addEventListener("change", () => {
+        hintType = document.getElementById("hint-type").value;
+
+        if (hintType === "image-number") {
+          // 画像と番号はつねに表示
+          document.getElementById("pokemon-image").style.display = "block";
+          document.getElementById("pokemon-number").style.display = "block";
+        } else if (hintType === "image") {
+          document.getElementById("pokemon-image").style.display = "block";
+          document.getElementById("pokemon-number").style.display = "none";
+        } else if (hintType === "number") {
+          document.getElementById("pokemon-image").style.display = "none";
+          document.getElementById("pokemon-number").style.display = "block";
+        }
+
+        localStorage.setItem("hintType", hintType);
+      });
+
+      // 「答えを表示」ボタンがクリックされたとき
+      document.getElementById("answer").addEventListener("click", showAnswer);
+
+      // 「リセット」ボタンが押されたとき
+      document.getElementById("reset-button").addEventListener("click", () => {
+        memorizedNumbers = {}; // 覚えた番号をリセット
+        localStorage.removeItem("memorizedNumbers"); // ローカルストレージから削除
+        last50Numbers = []; // 直近の50個もリセット
+        answerCount = -1; // 回答回数をリセット
+        document.getElementById("answer-count").textContent = answerCount; // 回答回数を表示
+        updateCounts();
+        showRandomNumber(); // 新しい番号を表示
+      });
+
+      // ページ読み込み時に地方範囲を設定し、最初の番号を表示
+      setRegionRange();
+      showRandomNumber();
+      updateCounts(); // ページ読み込み時にカウントを表示
+    </script>
+  </body>
 </html>
